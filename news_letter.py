@@ -174,59 +174,54 @@ def get_all_subscriptions():
         return jsonify({'error': str(e)}), 500
 
 
-
-@app.route('/unsubscribe', methods=['POST'])
-def unsubscribe():
+@app.route('/subscription/<string:uuid>', methods=['PUT'])
+def update_subscription(uuid):
+    print(f"Received UUID for update: {uuid}")
     data = request.json
+    name = data.get('name')
     email = data.get('email')
 
-    if not email:
-        return jsonify({"error": "Email is required!"}), 400
+    new_log_uuid = generate_uuid()
 
     try:
         with engine.connect() as connection:
-            # Check if the email exists in the subscription table
-            check_subscription_query = text("SELECT uuid, name, unsubscribe FROM subscription WHERE email = :email")
-            result = connection.execute(check_subscription_query, {"email": email}).fetchone()
+            # Check if the subscription exists
+            check_subscription_query = text("SELECT uuid, name, email FROM subscription WHERE uuid = :uuid")
+            result = connection.execute(check_subscription_query, {"uuid": uuid}).fetchone()
 
             if not result:
                 return jsonify({"message": "Subscription not found!"}), 404
 
-            subscription_uuid, name, unsubscribe_date = result
-
-            # If the user is already unsubscribed, don't update or log again
-            if unsubscribe_date is not None:
-                return jsonify({"message": "Already unsubscribed!"}), 200
-
-            # Update the unsubscribe field in the subscription table
+            # Update the subscription details
             update_subscription_query = text("""
                 UPDATE subscription 
-                SET unsubscribe = :unsubscribe
+                SET name = :name, email = :email
                 WHERE uuid = :uuid
             """)
             connection.execute(update_subscription_query, {
-                "unsubscribe": datetime.now(),
-                "uuid": subscription_uuid
+                "name": name,
+                "email": email,
+                "uuid": uuid
             })
 
-            # Log the unsubscribe action
+            # Log the update action
             insert_log_query = text("""
                 INSERT INTO log (uuid, name, email, action, datetime, subscription_id)
-                VALUES (:uuid, :name, :email, 'unsubscribe', :datetime, :subscription_id)
+                VALUES (:uuid, :name, :email, 'update', :datetime, :subscription_id)
             """)
             connection.execute(insert_log_query, {
-                "uuid": generate_uuid(),
+                "uuid": new_log_uuid,
                 "name": name,
                 "email": email,
                 "datetime": datetime.now(),
-                "subscription_id": subscription_uuid
+                "subscription_id": uuid
             })
 
-            return jsonify({"message": "Unsubscribed successfully!"}), 200
+            return jsonify({"message": "Subscription updated successfully!"}), 200
 
     except Exception as e:
         print(f"Error occurred: {e}")
-        return jsonify({'error': 'An error occurred while processing your request.'}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 
@@ -341,47 +336,6 @@ def create_log():
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 500
 
-# @app.route('/log/<string:uuid>', methods=['DELETE'])
-# def delete_log(log_id):
-#     try:
-#         with engine.connect() as connection:
-#             # Check if the log entry exists
-#             check_log_query = text("SELECT uuid FROM log WHERE uuid = :uuid")
-#             result = connection.execute(check_log_query, {"uuid": log_id}).fetchone()
-
-#             if result:
-#                 # Delete the log entry
-#                 delete_log_query = text("DELETE FROM log WHERE uuid = :uuid")
-#                 connection.execute(delete_log_query, {"uuid": log_id})
-
-#                 return jsonify({"message": "Log deleted successfully!"}), 200
-#             else:
-#                 return jsonify({"message": "Log not found!"}), 404
-
-#     except Exception as e:
-#         print(f"Error occurred: {e}")
-#         return jsonify({'error': str(e)}), 500
-
-@app.route('/log/<string:uuid>', methods=['DELETE'])
-def delete_log(uuid):
-    try:
-        with engine.connect() as connection:
-            # Check if the log entry exists
-            check_log_query = text("SELECT uuid FROM log WHERE uuid = :uuid")
-            result = connection.execute(check_log_query, {"uuid": uuid}).fetchone()
-
-            if result:
-                # Delete the log entry
-                delete_log_query = text("DELETE FROM log WHERE uuid = :uuid")
-                connection.execute(delete_log_query, {"uuid": uuid})
-
-                return jsonify({"message": "Log deleted successfully!"}), 200
-            else:
-                return jsonify({"message": "Log not found!"}), 404
-
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        return jsonify({'error': str(e)}), 500
 
 
 
