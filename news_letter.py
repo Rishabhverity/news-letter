@@ -212,8 +212,7 @@ def update_subscription(uuid):
 
             # Log the update action
             connection.execute(insert_log_sql, {
-                # 'log_uuid': str(uuid.uuid4()),
-                'log_uuid': generate_uuid(),
+                'log_uuid': str(uuid.uuid4()),
                 'name': data['name'],
                 'email': data['email'],
                 'datetime': datetime.now(),

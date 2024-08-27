@@ -102,6 +102,7 @@ def test_update_subscription_route(test_client):
     assert update_response.json['message'] == 'Subscription updated successfully'
 
 
+
 def test_delete_subscription_route(test_client):
     response = test_client.delete('/subscription/testuser@example.com')
     assert response.status_code == 200
