@@ -4,6 +4,10 @@ PyMySQL
 python-dotenv
 cryptography
 
-
+pytest
 mysqlclient
+
+
+pytest-flask
+SQLAlchemy
 
