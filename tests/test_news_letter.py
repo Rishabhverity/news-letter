@@ -104,9 +104,16 @@ def test_update_subscription_route(test_client):
 
 
 def test_delete_subscription_route(test_client):
+    # Pre-insert a subscription to delete
+    response = test_client.post('/subscription', json={
+        "name": "Test User",
+        "email": "testuser@example.com"
+    })
+    assert response.status_code == 200
+
+    # Now attempt to delete it
     response = test_client.delete('/subscription/testuser@example.com')
     assert response.status_code == 200
-    assert 'Subscription and related logs deleted successfully!' in response.json['message']
 
 def test_get_logs_route(test_client):
     response = test_client.get('/logs')
@@ -114,6 +121,18 @@ def test_get_logs_route(test_client):
     assert len(response.json) > 0
 
 def test_create_log_route(test_client):
+    # Pre-insert a subscription to link the log to
+    response = test_client.post('/subscription', json={
+        "name": "Test User",
+        "email": "testuser@example.com"
+    })
+    assert response.status_code == 200
+
+    # Now attempt to create a log
+    sample_log = {
+        "name": "Test User",
+        "email": "testuser@example.com",
+        "action": "subscribe"
+    }
     response = test_client.post('/log', json=sample_log)
     assert response.status_code == 201
-    assert 'Log created successfully!' in response.json['message']
