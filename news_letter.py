@@ -174,55 +174,54 @@ def get_all_subscriptions():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/subscription/<string:uuid>', methods=['PUT'])
+@app.route('/subscription/<uuid>', methods=['PUT'])
 def update_subscription(uuid):
-    print(f"Received UUID for update: {uuid}")
-    data = request.json
-    name = data.get('name')
-    email = data.get('email')
+    data = request.get_json()
 
-    new_log_uuid = generate_uuid()
+    # SQL statement to update the subscription
+    update_subscription_sql = text("""
+        UPDATE subscription
+        SET name = :name,
+            email = :email
+        WHERE uuid = :uuid
+    """)
+
+    # SQL statement to insert a log for the update action
+    insert_log_sql = text("""
+        INSERT INTO log (uuid, name, email, action, datetime, subscription_id)
+        VALUES (:log_uuid, :name, :email, 'update', :datetime, :subscription_id)
+    """)
 
     try:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             # Check if the subscription exists
-            check_subscription_query = text("SELECT uuid, name, email FROM subscription WHERE uuid = :uuid")
+            check_subscription_query = text("SELECT uuid FROM subscription WHERE uuid = :uuid")
             result = connection.execute(check_subscription_query, {"uuid": uuid}).fetchone()
 
             if not result:
                 return jsonify({"message": "Subscription not found!"}), 404
 
-            # Update the subscription details
-            update_subscription_query = text("""
-                UPDATE subscription 
-                SET name = :name, email = :email
-                WHERE uuid = :uuid
-            """)
-            connection.execute(update_subscription_query, {
-                "name": name,
-                "email": email,
-                "uuid": uuid
+            # Execute the update query
+            connection.execute(update_subscription_sql, {
+                'uuid': uuid,
+                'name': data['name'],
+                'email': data['email']
             })
 
             # Log the update action
-            insert_log_query = text("""
-                INSERT INTO log (uuid, name, email, action, datetime, subscription_id)
-                VALUES (:uuid, :name, :email, 'update', :datetime, :subscription_id)
-            """)
-            connection.execute(insert_log_query, {
-                "uuid": new_log_uuid,
-                "name": name,
-                "email": email,
-                "datetime": datetime.now(),
-                "subscription_id": uuid
+            connection.execute(insert_log_sql, {
+                'log_uuid': str(uuid.uuid4()),
+                'name': data['name'],
+                'email': data['email'],
+                'datetime': datetime.now(),
+                'subscription_id': uuid
             })
-
-            return jsonify({"message": "Subscription updated successfully!"}), 200
 
     except Exception as e:
         print(f"Error occurred: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 400
 
+    return jsonify({'message': 'Subscription updated successfully'}), 200
 
 
 
@@ -337,7 +336,7 @@ def create_log():
         return jsonify({'error': str(e)}), 500
 
 
-
-
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+

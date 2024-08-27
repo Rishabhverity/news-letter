@@ -1,0 +1,64 @@
+
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List directory contents
+        run: |
+          echo "Listing directory contents..."
+          ls -R
+
+      - name: Set up MySQL
+        uses: shogo82148/actions-setup-mysql@v1
+        with:
+          mysql-version: "8.0"
+
+      - name: Initialize MySQL
+        run: |
+          echo "Initializing MySQL..."
+          mysql -uroot -e "CREATE DATABASE IF NOT EXISTS test_db;"
+          mysql -uroot -e "CREATE USER IF NOT EXISTS 'test_user'@'%' IDENTIFIED BY 'test_password';"
+          mysql -uroot -e "GRANT ALL PRIVILEGES ON test_db.* TO 'test_user'@'%';"
+          mysql -uroot -e "FLUSH PRIVILEGES;"
+
+      - name: Check MySQL Version
+        run: mysql -uroot -e 'SELECT version()'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install pymysql
+        run: pip install pymysql
+
+      # - name: Verify pymysql Installation
+      #   run: pip list | grep pymysql
+
+      # - name: Set PYTHONPATH
+        # run: echo "PYTHONPATH=$(pwd)/application" >> $GITHUB_ENV
+
+      - name: Run tests
+        env:
+          # PYTHONPATH: ${{ env.PYTHONPATH }}
+         DATABASE_URI: mysql+pymysql://test_user:test_password@localhost/test_db
+        run: pytest 
+
+      - name: Print MySQL logs
+        if: failure()
+        run: sudo journalctl -u mysql
+
+# a
