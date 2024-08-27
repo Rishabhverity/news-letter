@@ -79,27 +79,27 @@ def test_get_all_subscriptions_route(test_client):
 #     response = test_client.put('/subscription/123e4567-e89b-12d3-a456-426614174000', json=update_data)
 #     assert response.status_code == 200
 #     assert 'Subscription updated successfully' in response.json['message']
-
 def test_update_subscription_route(test_client):
-    # First, create a subscription
-    create_data = {
-        "name": "Test User",
-        "email": "testuser@example.com"
-    }
-    response = test_client.post('/subscription', json=create_data)
-    assert response.status_code == 200
-    
-    # Fetch the subscription_id from the response
-    subscription_id = response.json['subscription_id']
-
-    # Now, update the subscription
     update_data = {
         "name": "Updated User",
-        "email": "updateduser@example.com"
+        "email": "updateduser@example.com",
+        "unsubscribe": None  # Or provide an unsubscribe date if necessary
     }
-    update_response = test_client.put(f'/subscription/{subscription_id}', json=update_data)
-    assert update_response.status_code == 200
-    assert update_response.json['message'] == 'Subscription updated successfully'
+
+    response = test_client.put('/subscription/testuser@example.com', json=update_data)
+    
+    assert response.status_code == 200
+    assert 'Subscription and related logs updated successfully!' in response.json['message']
+
+    # Optional: Retrieve the updated subscription to confirm changes
+    response = test_client.get('/subscriptions')
+    assert response.status_code == 200
+    updated_subscription = next(
+        (sub for sub in response.json['subscriptions'] if sub['email'] == 'updateduser@example.com'), None)
+    assert updated_subscription is not None
+    assert updated_subscription['name'] == 'Updated User'
+    assert updated_subscription['email'] == 'updateduser@example.com'
+
 
 
 
