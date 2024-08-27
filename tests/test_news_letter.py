@@ -2,7 +2,7 @@ import pytest
 import os
 from flask import Flask
 from sqlalchemy import text
-from app import app, db, engine
+from news_letter import app, db, engine
 
 # Sample data for testing
 sample_subscription = {
