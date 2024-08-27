@@ -72,6 +72,8 @@ metadata.create_all(engine)
 def generate_uuid():
     return str(uuid.uuid4())
 
+
+
 with app.app_context():
     db.create_all()
 
@@ -210,7 +212,8 @@ def update_subscription(uuid):
 
             # Log the update action
             connection.execute(insert_log_sql, {
-                'log_uuid': str(uuid.uuid4()),
+                # 'log_uuid': str(uuid.uuid4()),
+                'log_uuid': generate_uuid(),
                 'name': data['name'],
                 'email': data['email'],
                 'datetime': datetime.now(),
