@@ -150,80 +150,78 @@ def generate_uuid():
 
 
 
+# @app.route('/subscriptions', methods=['GET'])
+# def get_all_subscriptions():
+#     try:
+#         with engine.connect() as connection:
+#             # Query to fetch all subscription records
+#             fetch_subscriptions_sql = text("""
+#                 SELECT uuid, name, email, unsubscribe 
+#                 FROM subscription
+#             """)
+#             result = connection.execute(fetch_subscriptions_sql)
+#             subscriptions = [
+#                 {
+#                     'uuid': row[0],  # uuid is the first column
+#                     'name': row[1],  # name is the second column
+#                     'email': row[2],  # email is the third column
+#                     'unsubscribe': row[3].isoformat() if row[3] else None  # unsubscribe is the fourth column
+#                 }
+#                 for row in result
+#             ]
+
+#         return jsonify({'subscriptions': subscriptions}), 200
+#     except Exception as e:
+#         print(f"Error occurred: {e}")
+#         return jsonify({'error': str(e)}), 500
+
 @app.route('/subscriptions', methods=['GET'])
-def get_all_subscriptions():
+def get_subscriptions():
+    subscription_uuid = request.args.get('uuid')  # Get the UUID from the query parameters
+
     try:
         with engine.connect() as connection:
-            # Query to fetch all subscription records
-            fetch_subscriptions_sql = text("""
-                SELECT uuid, name, email, unsubscribe 
-                FROM subscription
-            """)
-            result = connection.execute(fetch_subscriptions_sql)
-            subscriptions = [
-                {
-                    'uuid': row[0],  # uuid is the first column
-                    'name': row[1],  # name is the second column
-                    'email': row[2],  # email is the third column
-                    'unsubscribe': row[3].isoformat() if row[3] else None  # unsubscribe is the fourth column
-                }
-                for row in result
-            ]
+            if subscription_uuid:
+                # Query to fetch a single subscription by UUID
+                fetch_subscription_sql = text("""
+                    SELECT uuid, name, email, unsubscribe 
+                    FROM subscription
+                    WHERE uuid = :uuid
+                """)
+                result = connection.execute(fetch_subscription_sql, {'uuid': subscription_uuid}).fetchone()
 
-        return jsonify({'subscriptions': subscriptions}), 200
+                if result:
+                    subscription = {
+                        'uuid': result[0],  # uuid is the first column
+                        'name': result[1],  # name is the second column
+                        'email': result[2],  # email is the third column
+                        'unsubscribe': result[3].isoformat() if result[3] else None  # unsubscribe is the fourth column
+                    }
+                    return jsonify({'subscription': subscription}), 200
+                else:
+                    return jsonify({'message': 'Subscription not found!'}), 404
+            else:
+                # Query to fetch all subscription records
+                fetch_subscriptions_sql = text("""
+                    SELECT uuid, name, email, unsubscribe 
+                    FROM subscription
+                """)
+                result = connection.execute(fetch_subscriptions_sql)
+                subscriptions = [
+                    {
+                        'uuid': row[0],  # uuid is the first column
+                        'name': row[1],  # name is the second column
+                        'email': row[2],  # email is the third column
+                        'unsubscribe': row[3].isoformat() if row[3] else None  # unsubscribe is the fourth column
+                    }
+                    for row in result
+                ]
+
+                return jsonify({'subscriptions': subscriptions}), 200
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 500
 
-
-# @app.route('/subscription/<uuid>', methods=['PUT'])
-# def update_subscription(uuid):
-#     data = request.get_json()
-
-#     # SQL statement to update the subscription
-#     update_subscription_sql = text("""
-#         UPDATE subscription
-#         SET name = :name,
-#             email = :email
-#         WHERE uuid = :uuid
-#     """)
-
-#     # SQL statement to insert a log for the update action
-#     insert_log_sql = text("""
-#         INSERT INTO log (uuid, name, email, action, datetime, subscription_id)
-#         VALUES (:log_uuid, :name, :email, 'update', :datetime, :subscription_id)
-#     """)
-
-#     try:
-#         with engine.begin() as connection:
-#             # Check if the subscription exists
-#             check_subscription_query = text("SELECT uuid FROM subscription WHERE uuid = :uuid")
-#             result = connection.execute(check_subscription_query, {"uuid": uuid}).fetchone()
-
-#             if not result:
-#                 return jsonify({"message": "Subscription not found!"}), 404
-
-#             # Execute the update query
-#             connection.execute(update_subscription_sql, {
-#                 'uuid': uuid,
-#                 'name': data['name'],
-#                 'email': data['email']
-#             })
-
-#             # Log the update action
-#             connection.execute(insert_log_sql, {
-#                 'log_uuid': str(uuid.uuid4()),
-#                 'name': data['name'],
-#                 'email': data['email'],
-#                 'datetime': datetime.now(),
-#                 'subscription_id': uuid
-#             })
-
-#     except Exception as e:
-#         print(f"Error occurred: {e}")
-#         return jsonify({'error': str(e)}), 400
-
-#     return jsonify({'message': 'Subscription updated successfully'}), 200
 
 @app.route('/subscription/<email>', methods=['PUT'])
 def update_subscription(email):
