@@ -1,0 +1,320 @@
+{
+    "swagger": "2.0",
+    "info": {
+      "description": "API documentation for the Newsletter Subscription system.",
+      "version": "1.0.0",
+      "title": "Newsletter Subscription API"
+    },
+    "host": "localhost:5000",
+    "basePath": "/",
+    "schemes": [
+      "http"
+    ],
+    "paths": {
+      "/": {
+        "get": {
+          "summary": "Home",
+          "description": "Welcome message for the Newsletter Subscription API",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "Welcome to the Newsletter Subscription API!"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/subscription": {
+        "post": {
+          "summary": "Subscribe",
+          "description": "Subscribe a new user to the newsletter.",
+          "parameters": [
+            {
+              "in": "body",
+              "name": "body",
+              "description": "User subscription details",
+              "required": true,
+              "schema": {
+                "type": "object",
+                "required": ["name", "email"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                  }
+                }
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Subscription successful",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "Subscribed successfully!"
+                  },
+                  "subscription_id": {
+                    "type": "string",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid input"
+            }
+          }
+        }
+      },
+      "/subscriptions": {
+        "get": {
+          "summary": "Get Subscriptions",
+          "description": "Retrieve all subscriptions or a specific subscription by UUID.",
+          "parameters": [
+            {
+              "name": "uuid",
+              "in": "query",
+              "description": "Subscription UUID",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful operation",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subscriptions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "uuid": {
+                          "type": "string",
+                          "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "John Doe"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "john.doe@example.com"
+                        },
+                        "unsubscribe": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2024-08-30T12:34:56.789Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Subscription not found"
+            }
+          }
+        }
+      },
+      "/subscription/{email}": {
+        "put": {
+          "summary": "Update Subscription",
+          "description": "Update subscription details by email.",
+          "parameters": [
+            {
+              "name": "email",
+              "in": "path",
+              "description": "User email address",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "in": "body",
+              "name": "body",
+              "description": "Updated subscription details",
+              "required": true,
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Jane Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                  },
+                  "unsubscribe": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-08-30T12:34:56.789Z"
+                  }
+                }
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Subscription and logs updated successfully"
+            },
+            "404": {
+              "description": "Subscription not found"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete Subscription",
+          "description": "Soft delete a subscription by email.",
+          "parameters": [
+            {
+              "name": "email",
+              "in": "path",
+              "description": "User email address",
+              "required": true,
+              "type": "string"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Subscription and associated logs soft-deleted successfully"
+            },
+            "404": {
+              "description": "Subscription not found or already deleted"
+            }
+          }
+        }
+      },
+      "/log": {
+      "post": {
+        "summary": "Log Action",
+        "description": "Log a subscription or unsubscription action.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Log details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["name", "email", "action"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "John Doe"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "john.doe@example.com"
+                },
+                "action": {
+                  "type": "string",
+                  "example": "subscribe"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log entry created successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Log entry created successfully!"
+                },
+                "log_id": {
+                  "type": "string",
+                  "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+      "/logs": {
+        "get": {
+          "summary": "Get Logs",
+          "description": "Retrieve all logs.",
+          "responses": {
+            "200": {
+              "description": "Successful operation",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "uuid": {
+                          "type": "string",
+                          "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "John Doe"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "john.doe@example.com"
+                        },
+                        "action": {
+                          "type": "string",
+                          "example": "subscribe"
+                        },
+                        "datetime": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2024-08-30T12:34:56.789Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "definitions": {
+      "Subscription": {
+        "type": "object",
+        "required": ["name", "email"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "example": "john.doe@example.com"
+          }
+        }
+      }
+    }
+  }
+  

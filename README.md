@@ -23,11 +23,6 @@ Create a Log (POST /log)
 Manually create a log entry for subscription-related activities such as subscribing, unsubscribing, or updating a subscription.
 The log entry includes details like the name, email, action type, timestamp, and associated subscription UUID.
 
-3. Database Schema
-Subscription Table
-Fields include UUID, name, email, and unsubscribe status.
-Log Table
-Fields include UUID, name, email, action (subscribe/unsubscribe/update), timestamp, and a foreign key linking to the associated subscription.
 
 
 4. Error Handling

@@ -11,3 +11,4 @@ mysqlclient
 pytest-flask
 SQLAlchemy
 
+flask-swagger-ui

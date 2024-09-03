@@ -6,6 +6,7 @@ networks:
 services:
   db:
     image: mysql:8.0
+    container_name: db
     environment:
       MYSQL_ROOT_PASSWORD: this
       MYSQL_DATABASE: news
