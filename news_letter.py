@@ -332,33 +332,6 @@ def add_log():
 
 
 
-# @app.route('/logs', methods=['GET'])
-# def get_logs():
-#     try:
-#         with engine.connect() as connection:
-#             # Fetch all log records, including subscribe and unsubscribe actions
-#             fetch_logs_sql = text("""
-#                 SELECT uuid, name, email, action, datetime 
-#                 FROM log
-#                 WHERE is_deleted = False
-#                 ORDER BY datetime DESC
-#             """)
-#             result = connection.execute(fetch_logs_sql)
-#             logs = [
-#                 {
-#                     'uuid': row[0],
-#                     'name': row[1],
-#                     'email': row[2],
-#                     'action': row[3],
-#                     'datetime': row[4].isoformat() if row[4] else None
-#                 }
-#                 for row in result
-#             ]
-
-#             return jsonify({'data': logs}), 200
-#     except Exception as e:
-#         print(f"Error occurred: {e}")
-#         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/logs', methods=['GET'])
