@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.sql import func
 from flask_swagger_ui import get_swaggerui_blueprint
 
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -137,11 +138,12 @@ def subscribe():
                 'subscription_id': subscription_uuid
             })
 
+            # Return success message within the try block
+            return jsonify({'message': 'Subscribed successfully!', 'subscription_id': subscription_uuid}), 200
+
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 400
-
-    return jsonify({'message': 'Subscribed successfully!', 'subscription_id': subscription_uuid}), 200
 
 
 
@@ -194,12 +196,12 @@ def get_subscriptions():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/subscription/<uuid>', methods=['PUT'])
-def update_subscription(uuid):
+@app.route('/subscription/<subscription_uuid>', methods=['PUT'])
+def update_subscription(subscription_uuid):
     data = request.get_json()
     new_name = data.get('name')
     new_email = data.get('email')
-    unsubscribe_date = data.get('unsubscribe')
+    unsubscribe_date = datetime.now()  # Set unsubscribe date to the current datetime
 
     try:
         with engine.begin() as connection:
@@ -209,47 +211,48 @@ def update_subscription(uuid):
                 FROM subscription 
                 WHERE uuid = :uuid AND is_deleted = False
             """)
-            result = connection.execute(check_subscription_query, {"uuid": uuid}).fetchone()
+            result = connection.execute(check_subscription_query, {"uuid": subscription_uuid}).fetchone()
 
             if result:
                 # Retrieve existing values
                 current_name = result[1]
                 current_email = result[2]
-                current_unsubscribe = result[3]
 
-                # Only update the fields that are provided
+                # Update the subscription with the new details
                 update_subscription_query = text("""
                     UPDATE subscription
                     SET name = :name, email = :email, unsubscribe = :unsubscribe
                     WHERE uuid = :uuid
                 """)
                 connection.execute(update_subscription_query, {
-                    'uuid': uuid,
+                    'uuid': subscription_uuid,
                     'name': new_name if new_name is not None else current_name,
                     'email': new_email if new_email is not None else current_email,
-                    'unsubscribe': unsubscribe_date if unsubscribe_date is not None else current_unsubscribe
+                    'unsubscribe': unsubscribe_date  # Always update unsubscribe date
                 })
 
-                # Update the related logs if name or email was changed
-                if new_name or new_email:
-                    update_logs_query = text("""
-                        UPDATE log
-                        SET name = :name, email = :email
-                        WHERE subscription_id = :subscription_id
-                    """)
-                    connection.execute(update_logs_query, {
-                        'name': new_name if new_name is not None else current_name,
-                        'email': new_email if new_email is not None else current_email,
-                        'subscription_id': uuid
-                    })
+                # Insert a new log entry for unsubscribe action
+                new_log_uuid = str(uuid.uuid4())  # This now correctly refers to the uuid module
+                insert_log_sql = text("""
+                    INSERT INTO log (uuid, name, email, action, datetime, subscription_id, is_deleted)
+                    VALUES (:uuid, :name, :email, 'unsubscribe', :datetime, :subscription_id, False)
+                """)
+                connection.execute(insert_log_sql, {
+                    'uuid': new_log_uuid,
+                    'name': new_name if new_name is not None else current_name,
+                    'email': new_email if new_email is not None else current_email,
+                    'datetime': unsubscribe_date,
+                    'subscription_id': subscription_uuid
+                })
 
-                return jsonify({"message": "Subscription and related logs updated successfully!"}), 200
+                return jsonify({"message": "Subscription unsubscribed and log updated successfully!"}), 200
             else:
                 return jsonify({"message": "Subscription not found!"}), 404
 
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 500
+
 
 
 
@@ -329,15 +332,45 @@ def add_log():
 
 
 
+# @app.route('/logs', methods=['GET'])
+# def get_logs():
+#     try:
+#         with engine.connect() as connection:
+#             # Fetch all log records, including subscribe and unsubscribe actions
+#             fetch_logs_sql = text("""
+#                 SELECT uuid, name, email, action, datetime 
+#                 FROM log
+#                 WHERE is_deleted = False
+#                 ORDER BY datetime DESC
+#             """)
+#             result = connection.execute(fetch_logs_sql)
+#             logs = [
+#                 {
+#                     'uuid': row[0],
+#                     'name': row[1],
+#                     'email': row[2],
+#                     'action': row[3],
+#                     'datetime': row[4].isoformat() if row[4] else None
+#                 }
+#                 for row in result
+#             ]
+
+#             return jsonify({'data': logs}), 200
+#     except Exception as e:
+#         print(f"Error occurred: {e}")
+#         return jsonify({'error': str(e)}), 500
+
+
 @app.route('/logs', methods=['GET'])
 def get_logs():
     try:
         with engine.connect() as connection:
-            # Query to fetch all log records
+            # Fetch all log records, including subscribe and unsubscribe actions
             fetch_logs_sql = text("""
                 SELECT uuid, name, email, action, datetime 
                 FROM log
                 WHERE is_deleted = False
+                ORDER BY datetime DESC
             """)
             result = connection.execute(fetch_logs_sql)
             logs = [
@@ -346,7 +379,7 @@ def get_logs():
                     'name': row[1],
                     'email': row[2],
                     'action': row[3],
-                    'datetime': row[4].isoformat()
+                    'datetime': row[4].isoformat() if row[4] else None
                 }
                 for row in result
             ]
@@ -355,7 +388,6 @@ def get_logs():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 500
-
 
 
 # Swagger specific configurations
@@ -380,3 +412,4 @@ app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
