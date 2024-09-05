@@ -343,7 +343,7 @@ def get_logs():
                 SELECT uuid, name, email, action, datetime 
                 FROM log
                 WHERE is_deleted = False
-                ORDER BY datetime DESC
+                ORDER BY datetime DESC++
             """)
             result = connection.execute(fetch_logs_sql)
             logs = [

@@ -1,37 +1,4 @@
-# version: '3.8'
-# networks:
-#   app:
-#     driver: bridge
 
-# services:
-#   db:
-#     image: mysql:8.0
-#     container_name: db
-#     environment:
-#       MYSQL_ROOT_PASSWORD: this
-#       MYSQL_DATABASE: news
-#       MYSQL_USER: user
-#       MYSQL_PASSWORD: password
-#     ports:
-#       - "3306:3306"
-#     networks:
-#       - app
-#     volumes:
-#       - app_data:/var/lib/mysql 
-#   app:
-#     build: .
-#     volumes:
-#       - .:/app
-#     working_dir: /app
-    
-#     networks:
-#       - app
-#     depends_on:
-#       - db
-#     env_file:
-#       - .env
-#     ports:
-#       [5000:5000]
 
 networks:
   app:
@@ -51,7 +18,7 @@ services:
     networks:
       - app
     volumes:
-      - app_data:/var/lib/mysql 
+      - ./app_data:/var/lib/mysql 
 
   app:
     build: .
