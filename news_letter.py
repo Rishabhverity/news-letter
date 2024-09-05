@@ -133,6 +133,52 @@ def subscribe():
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while subscribing. Please try again later.'}), 500
 
+# @app.route('/subscriptions', methods=['GET'])
+# def get_subscriptions():
+#     subscription_id = request.args.get('id')
+
+#     try:
+#         with engine.connect() as connection:
+#             if subscription_id:
+#                 fetch_subscription_sql = text("""
+#                     SELECT id, name, email, unsubscribe 
+#                     FROM subscription
+#                     WHERE id = :id AND is_deleted = False
+#                 """)
+#                 result = connection.execute(fetch_subscription_sql, {'id': subscription_id}).fetchone()
+
+#                 if result:
+#                     subscription = {
+#                         'id': result[0],
+#                         'name': result[1],
+#                         'email': result[2],
+#                         'unsubscribe': result[3].isoformat() if result[3] else None
+#                     }
+#                     return jsonify({'data': subscription}), 200
+#                 else:
+#                     return jsonify({'message': 'Subscription not found!'}), 404
+#             else:
+#                 fetch_subscriptions_sql = text("""
+#                     SELECT id, name, email, unsubscribe 
+#                     FROM subscription
+#                     WHERE is_deleted = False
+#                 """)
+#                 result = connection.execute(fetch_subscriptions_sql)
+#                 subscriptions = [
+#                     {
+#                         'id': row[0],
+#                         'name': row[1],
+#                         'email': row[2],
+#                         'unsubscribe': row[3].isoformat() if row[3] else None
+#                     }
+#                     for row in result
+#                 ]
+
+#                 return jsonify({'data': subscriptions}), 200
+#     except Exception as e:
+#         print(f"Error occurred: {e}")
+#         return jsonify({'error': 'An error occurred while fetching subscriptions. Please try again later.'}), 500
+
 @app.route('/subscriptions', methods=['GET'])
 def get_subscriptions():
     subscription_id = request.args.get('id')
@@ -158,10 +204,12 @@ def get_subscriptions():
                 else:
                     return jsonify({'message': 'Subscription not found!'}), 404
             else:
+                # Removed 'datetime' column from the ORDER BY clause
                 fetch_subscriptions_sql = text("""
                     SELECT id, name, email, unsubscribe 
                     FROM subscription
                     WHERE is_deleted = False
+                    ORDER BY unsubscribe DESC  -- Order by the latest unsubscribe time only
                 """)
                 result = connection.execute(fetch_subscriptions_sql)
                 subscriptions = [
@@ -176,16 +224,15 @@ def get_subscriptions():
 
                 return jsonify({'data': subscriptions}), 200
     except Exception as e:
-        print(f"Error occurred: {e}")
-        return jsonify({'error': 'An error occurred while fetching subscriptions. Please try again later.'}), 500
-
+        print(f"Error occurred: {e}")  # Print the actual error for debugging
+        return jsonify({'error': f"An error occurred while fetching subscriptions. Please try again later. Error: {str(e)}"}), 500
 
 @app.route('/subscription/<id>', methods=['PUT'])
 def update_subscription(id):
     data = request.get_json()
     new_name = data.get('name')
     new_email = data.get('email')
-    unsubscribe_date = datetime.now()
+    is_unsubscribe = data.get('unsubscribe')  # New field to check if it's an unsubscribe action
 
     if not new_name and not new_email:
         return jsonify({'error': 'At least one of name or email must be provided!'}), 400
@@ -202,7 +249,17 @@ def update_subscription(id):
             if result:
                 current_name = result[1]
                 current_email = result[2]
+                unsubscribe_date = result[3]  # Current value of unsubscribe field
 
+                # Update only name and email unless it's an unsubscribe action
+                if is_unsubscribe:
+                    unsubscribe_date = datetime.now()
+                    action = 'unsubscribe'
+                else:
+                    unsubscribe_date = None  # Reset unsubscribe if not unsubscribing
+                    action = 'update'  # Custom action for regular update
+
+                # Update subscription with new values
                 update_subscription_query = text("""
                     UPDATE subscription
                     SET name = :name, email = :email, unsubscribe = :unsubscribe
@@ -215,20 +272,22 @@ def update_subscription(id):
                     'unsubscribe': unsubscribe_date
                 })
 
+                # Insert log entry for update or unsubscribe action
                 new_log_id = str(uuid.uuid4())
                 insert_log_sql = text("""
                     INSERT INTO log (id, name, email, action, datetime, subscription_id)
-                    VALUES (:id, :name, :email, 'unsubscribe', :datetime, :subscription_id)
+                    VALUES (:id, :name, :email, :action, :datetime, :subscription_id)
                 """)
                 connection.execute(insert_log_sql, {
                     'id': new_log_id,
                     'name': new_name if new_name is not None else current_name,
                     'email': new_email if new_email is not None else current_email,
-                    'datetime': unsubscribe_date,
+                    'action': action,
+                    'datetime': datetime.now(),
                     'subscription_id': id
                 })
 
-                return jsonify({"message": "Subscription unsubscribed and log updated successfully!"}), 200
+                return jsonify({"message": f"Subscription {action} and log updated successfully!"}), 200
             else:
                 return jsonify({"message": "Subscription not found!"}), 404
 
