@@ -133,52 +133,6 @@ def subscribe():
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while subscribing. Please try again later.'}), 500
 
-# @app.route('/subscriptions', methods=['GET'])
-# def get_subscriptions():
-#     subscription_id = request.args.get('id')
-
-#     try:
-#         with engine.connect() as connection:
-#             if subscription_id:
-#                 fetch_subscription_sql = text("""
-#                     SELECT id, name, email, unsubscribe 
-#                     FROM subscription
-#                     WHERE id = :id AND is_deleted = False
-#                 """)
-#                 result = connection.execute(fetch_subscription_sql, {'id': subscription_id}).fetchone()
-
-#                 if result:
-#                     subscription = {
-#                         'id': result[0],
-#                         'name': result[1],
-#                         'email': result[2],
-#                         'unsubscribe': result[3].isoformat() if result[3] else None
-#                     }
-#                     return jsonify({'data': subscription}), 200
-#                 else:
-#                     return jsonify({'message': 'Subscription not found!'}), 404
-#             else:
-#                 fetch_subscriptions_sql = text("""
-#                     SELECT id, name, email, unsubscribe 
-#                     FROM subscription
-#                     WHERE is_deleted = False
-#                 """)
-#                 result = connection.execute(fetch_subscriptions_sql)
-#                 subscriptions = [
-#                     {
-#                         'id': row[0],
-#                         'name': row[1],
-#                         'email': row[2],
-#                         'unsubscribe': row[3].isoformat() if row[3] else None
-#                     }
-#                     for row in result
-#                 ]
-
-#                 return jsonify({'data': subscriptions}), 200
-#     except Exception as e:
-#         print(f"Error occurred: {e}")
-#         return jsonify({'error': 'An error occurred while fetching subscriptions. Please try again later.'}), 500
-
 @app.route('/subscriptions', methods=['GET'])
 def get_subscriptions():
     subscription_id = request.args.get('id')
