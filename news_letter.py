@@ -311,6 +311,7 @@ def get_logs():
                     FROM log
                     JOIN subscription ON log.subscription_id = subscription.id
                     WHERE log.subscription_id = :subscription_id
+                    ORDER BY log.datetime DESC
                 """)
                 result = connection.execute(fetch_logs_query, {'subscription_id': subscription_id})
             else:
@@ -318,6 +319,7 @@ def get_logs():
                 fetch_logs_query = text("""
                     SELECT log.id, log.name, log.email, log.action, log.datetime, log.subscription_id
                     FROM log
+                    ORDER BY log.datetime DESC
                 """)
                 result = connection.execute(fetch_logs_query)
 
@@ -341,6 +343,7 @@ def get_logs():
     except Exception as e:
         print(f"Error occurred while fetching logs: {e}")
         return jsonify({'error': 'An error occurred while fetching logs. Please try again later.'}), 500
+
 
 
 
