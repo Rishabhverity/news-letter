@@ -92,11 +92,24 @@ def subscribe():
 
     try:
         with engine.begin() as connection:
-            check_subscription_query = text("SELECT id FROM subscription WHERE email = :email AND is_deleted = False")
+            # Check if the subscription already exists
+            check_subscription_query = text("""
+                SELECT id, unsubscribe 
+                FROM subscription 
+                WHERE email = :email AND is_deleted = False
+            """)
             result = connection.execute(check_subscription_query, {"email": email}).fetchone()
 
             if result:
+                # If the user is unsubscribed, allow resubscription
                 subscription_id = result[0]
+                unsubscribe = result[1]
+                
+                if unsubscribe is None:
+                    # User is already subscribed, return an error
+                    return jsonify({'error': 'Email is already subscribed!'}), 409
+                
+                # If unsubscribed, reset unsubscribe and resubscribe
                 update_subscription_query = text("""
                     UPDATE subscription 
                     SET unsubscribe = NULL 
@@ -104,6 +117,7 @@ def subscribe():
                 """)
                 connection.execute(update_subscription_query, {"email": email})
             else:
+                # Insert a new subscription if the email doesn't exist
                 insert_subscription_sql = text("""
                     INSERT INTO subscription (id, name, email, unsubscribe, is_deleted)
                     VALUES (:id, :name, :email, NULL, False)
@@ -115,6 +129,7 @@ def subscribe():
                 })
                 subscription_id = new_subscription_id
 
+            # Insert a log entry for the subscription
             insert_log_sql = text("""
                 INSERT INTO log (id, name, email, action, datetime, subscription_id)
                 VALUES (:id, :name, :email, 'subscribe', :datetime, :subscription_id)
@@ -132,6 +147,7 @@ def subscribe():
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while subscribing. Please try again later.'}), 500
+
 
 @app.route('/subscriptions', methods=['GET'])
 def get_subscriptions():
@@ -180,16 +196,16 @@ def get_subscriptions():
     except Exception as e:
         print(f"Error occurred: {e}")  # Print the actual error for debugging
         return jsonify({'error': f"An error occurred while fetching subscriptions. Please try again later. Error: {str(e)}"}), 500
-
 @app.route('/subscription/<id>', methods=['PUT'])
 def update_subscription(id):
     data = request.get_json()
     new_name = data.get('name')
     new_email = data.get('email')
-    is_unsubscribe = data.get('unsubscribe')  # New field to check if it's an unsubscribe action
+    action = data.get('action')  # New field for action
 
-    if not new_name and not new_email:
-        return jsonify({'error': 'At least one of name or email must be provided!'}), 400
+    # Ensure at least one of name, email, or action is provided
+    if not new_name and not new_email and not action:
+        return jsonify({'error': 'At least one of name, email, or action must be provided!'}), 400
 
     try:
         with engine.begin() as connection:
@@ -205,15 +221,13 @@ def update_subscription(id):
                 current_email = result[2]
                 unsubscribe_date = result[3]  # Current value of unsubscribe field
 
-                # Update only name and email unless it's an unsubscribe action
-                if is_unsubscribe:
+                # Determine action based updates
+                if action == 'unsubscribe':
                     unsubscribe_date = datetime.now()
-                    action = 'unsubscribe'
-                else:
-                    unsubscribe_date = None  # Reset unsubscribe if not unsubscribing
-                    action = 'update'  # Custom action for regular update
+                elif action == 'subscribe':
+                    unsubscribe_date = None  # Reset unsubscribe if re-subscribing
 
-                # Update subscription with new values
+                # Update subscription details
                 update_subscription_query = text("""
                     UPDATE subscription
                     SET name = :name, email = :email, unsubscribe = :unsubscribe
@@ -226,7 +240,7 @@ def update_subscription(id):
                     'unsubscribe': unsubscribe_date
                 })
 
-                # Insert log entry for update or unsubscribe action
+                # Insert a log entry for the action
                 new_log_id = str(uuid.uuid4())
                 insert_log_sql = text("""
                     INSERT INTO log (id, name, email, action, datetime, subscription_id)
@@ -236,12 +250,12 @@ def update_subscription(id):
                     'id': new_log_id,
                     'name': new_name if new_name is not None else current_name,
                     'email': new_email if new_email is not None else current_email,
-                    'action': action,
+                    'action': action if action is not None else 'update',
                     'datetime': datetime.now(),
                     'subscription_id': id
                 })
 
-                return jsonify({"message": f"Subscription {action} and log updated successfully!"}), 200
+                return jsonify({"message": f"Subscription {action if action else 'updated'} successfully!"}), 200
             else:
                 return jsonify({"message": "Subscription not found!"}), 404
 
@@ -250,14 +264,19 @@ def update_subscription(id):
         return jsonify({'error': 'An error occurred while updating the subscription. Please try again later.'}), 500
 
 
+
 @app.route('/subscription/<id>', methods=['DELETE'])
 def delete_subscription(id):
     try:
         with engine.begin() as connection:
-            check_subscription_query = text("SELECT id FROM subscription WHERE id = :id AND is_deleted = False")
+            # Check if the subscription exists and is not already deleted
+            check_subscription_query = text("""
+                SELECT id FROM subscription WHERE id = :id AND is_deleted = False
+            """)
             result = connection.execute(check_subscription_query, {"id": id}).fetchone()
 
             if result:
+                # Soft delete the subscription (only update the is_deleted flag)
                 soft_delete_subscription_query = text("""
                     UPDATE subscription
                     SET is_deleted = True
@@ -269,8 +288,9 @@ def delete_subscription(id):
             else:
                 return jsonify({'message': 'Subscription not found!'}), 404
     except Exception as e:
-         print(f"Error occurred: {e}")
-         return jsonify({'error': str(e)}), 500
+        print(f"Error occurred: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 
 
@@ -285,19 +305,19 @@ def get_logs():
                 if not subscription_id.isalnum() or len(subscription_id) != 36:
                     return jsonify({'error': 'Invalid subscription ID format!'}), 400
 
+                # Fetch logs even if the subscription is soft-deleted
                 fetch_logs_query = text("""
                     SELECT log.id, log.name, log.email, log.action, log.datetime, log.subscription_id
                     FROM log
                     JOIN subscription ON log.subscription_id = subscription.id
-                    WHERE log.subscription_id = :subscription_id AND subscription.is_deleted = False
+                    WHERE log.subscription_id = :subscription_id
                 """)
                 result = connection.execute(fetch_logs_query, {'subscription_id': subscription_id})
             else:
+                # Fetch all logs, ignoring subscription's is_deleted status
                 fetch_logs_query = text("""
                     SELECT log.id, log.name, log.email, log.action, log.datetime, log.subscription_id
                     FROM log
-                    JOIN subscription ON log.subscription_id = subscription.id
-                    WHERE subscription.is_deleted = False
                 """)
                 result = connection.execute(fetch_logs_query)
 
@@ -321,6 +341,7 @@ def get_logs():
     except Exception as e:
         print(f"Error occurred while fetching logs: {e}")
         return jsonify({'error': 'An error occurred while fetching logs. Please try again later.'}), 500
+
 
 
 # POST Logs API

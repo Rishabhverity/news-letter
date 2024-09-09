@@ -6,6 +6,7 @@ cryptography
 
 pytest
 mysqlclient
+gunicorn
 
 
 pytest-flask
