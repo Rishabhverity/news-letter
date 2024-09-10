@@ -336,7 +336,7 @@ def get_logs():
             ]
 
             if not logs:
-                return jsonify({'message': 'No logs found!'}), 404
+                return jsonify([]), 404
 
             return jsonify({'data': logs}), 200
 
