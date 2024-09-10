@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy.sql import func
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_migrate import Migrate
-
+import re 
 load_dotenv()
 
 app = Flask(__name__)
@@ -78,6 +78,8 @@ def home():
     return jsonify({"message": "Welcome to the Newsletter Subscription API!"})
 
 
+
+
 @app.route('/subscription', methods=['POST'])
 def subscribe():
     data = request.get_json()
@@ -86,6 +88,11 @@ def subscribe():
 
     if not name or not email:
         return jsonify({'error': 'Name and email are required!'}), 400
+
+    # Basic email validation using regex
+    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if not re.match(email_pattern, email):
+        return jsonify({'error': 'Invalid email format! Email must contain @ and a valid domain like .com'}), 400
 
     new_subscription_id = str(uuid.uuid4())
     new_log_id = str(uuid.uuid4())
@@ -101,15 +108,13 @@ def subscribe():
             result = connection.execute(check_subscription_query, {"email": email}).fetchone()
 
             if result:
-                # If the user is unsubscribed, allow resubscription
                 subscription_id = result[0]
                 unsubscribe = result[1]
                 
                 if unsubscribe is None:
-                    # User is already subscribed, return an error
                     return jsonify({'error': 'Email is already subscribed!'}), 409
                 
-                # If unsubscribed, reset unsubscribe and resubscribe
+                # Reset unsubscribe if resubscribing
                 update_subscription_query = text("""
                     UPDATE subscription 
                     SET unsubscribe = NULL 
@@ -117,7 +122,7 @@ def subscribe():
                 """)
                 connection.execute(update_subscription_query, {"email": email})
             else:
-                # Insert a new subscription if the email doesn't exist
+                # Insert a new subscription
                 insert_subscription_sql = text("""
                     INSERT INTO subscription (id, name, email, unsubscribe, is_deleted)
                     VALUES (:id, :name, :email, NULL, False)
@@ -149,6 +154,7 @@ def subscribe():
         return jsonify({'error': 'An error occurred while subscribing. Please try again later.'}), 500
 
 
+
 @app.route('/subscriptions', methods=['GET'])
 def get_subscriptions():
     subscription_id = request.args.get('id')
@@ -174,7 +180,7 @@ def get_subscriptions():
                 else:
                     return jsonify({'message': 'Subscription not found!'}), 404
             else:
-                # Removed 'datetime' column from the ORDER BY clause
+                
                 fetch_subscriptions_sql = text("""
                     SELECT id, name, email, unsubscribe 
                     FROM subscription
@@ -196,14 +202,15 @@ def get_subscriptions():
     except Exception as e:
         print(f"Error occurred: {e}")  # Print the actual error for debugging
         return jsonify({'error': f"An error occurred while fetching subscriptions. Please try again later. Error: {str(e)}"}), 500
+
 @app.route('/subscription/<id>', methods=['PUT'])
 def update_subscription(id):
     data = request.get_json()
     new_name = data.get('name')
     new_email = data.get('email')
-    action = data.get('action')  # New field for action
+    action = data.get('action')  
 
-    # Ensure at least one of name, email, or action is provided
+   
     if not new_name and not new_email and not action:
         return jsonify({'error': 'At least one of name, email, or action must be provided!'}), 400
 
@@ -311,8 +318,6 @@ def delete_subscription(id):
         return jsonify({'error': str(e)}), 500
 
 
-
-
 @app.route('/logs', methods=['GET'])
 def get_logs():
     subscription_id = request.args.get('subscription_id')  # Optional filter by subscription ID
@@ -355,7 +360,8 @@ def get_logs():
             ]
 
             if not logs:
-                return jsonify([]), 404
+                # Return `{"data": []}` when no logs are found
+                return jsonify({'data': []}), 200
 
             return jsonify({'data': logs}), 200
 
