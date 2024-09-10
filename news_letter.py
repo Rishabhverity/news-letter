@@ -271,22 +271,41 @@ def delete_subscription(id):
         with engine.begin() as connection:
             # Check if the subscription exists and is not already deleted
             check_subscription_query = text("""
-                SELECT id FROM subscription WHERE id = :id AND is_deleted = False
+                SELECT id, name, email FROM subscription WHERE id = :id AND is_deleted = False
             """)
             result = connection.execute(check_subscription_query, {"id": id}).fetchone()
 
             if result:
+                subscription_id = result[0]
+                subscription_name = result[1]
+                subscription_email = result[2]
+
                 # Soft delete the subscription (only update the is_deleted flag)
                 soft_delete_subscription_query = text("""
                     UPDATE subscription
                     SET is_deleted = True
                     WHERE id = :id
                 """)
-                connection.execute(soft_delete_subscription_query, {"id": id})
+                connection.execute(soft_delete_subscription_query, {"id": subscription_id})
 
-                return jsonify({'message': 'Subscription soft-deleted successfully!'}), 200
+                # Insert a log entry for the deletion action
+                new_log_id = str(uuid.uuid4())
+                insert_log_sql = text("""
+                    INSERT INTO log (id, name, email, action, datetime, subscription_id)
+                    VALUES (:id, :name, :email, 'delete', :datetime, :subscription_id)
+                """)
+                connection.execute(insert_log_sql, {
+                    'id': new_log_id,
+                    'name': subscription_name,
+                    'email': subscription_email,
+                    'datetime': datetime.now(),
+                    'subscription_id': subscription_id
+                })
+
+                return jsonify({'message': 'Subscription soft-deleted and log created successfully!'}), 200
             else:
                 return jsonify({'message': 'Subscription not found!'}), 404
+
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': str(e)}), 500

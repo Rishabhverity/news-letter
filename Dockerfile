@@ -1,26 +1,21 @@
-FROM python:3.8
-WORKDIR /app
-COPY . .
-
-RUN pip install -r requirements.txt
-
-CMD ["python", "news_letter.py"]
-
-# Use a lightweight Python image
-# FROM python:3.10-slim
-
-# # Set working directory
+# FROM python:3.8
 # WORKDIR /app
-
-# # Install dependencies
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Copy application code
 # COPY . .
 
-# # Expose the application port
-# EXPOSE 5000
+# RUN pip install -r requirements.txt
 
-# # Start the application using Gunicorn
-# CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "news_letter:app"]
+# CMD ["python", "news_letter.py"]
+
+FROM python:3.8
+
+# Set the working directory
+WORKDIR /app
+
+# Copy all application files to the container
+COPY . .
+
+# Install dependencies
+RUN pip install -r requirements.txt
+
+# Command to run the application with gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]

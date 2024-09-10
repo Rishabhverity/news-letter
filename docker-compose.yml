@@ -1,5 +1,45 @@
 
 
+# networks:
+#   app:
+#     driver: bridge
+
+# services:
+#   db:
+#     image: mysql:8.0
+#     container_name: db
+#     environment:
+#       MYSQL_ROOT_PASSWORD: this
+#       MYSQL_DATABASE: news
+#       MYSQL_USER: user
+#       MYSQL_PASSWORD: password
+#     ports:
+#       - "3306:3306"
+#     networks:
+#       - app
+#     volumes:
+#       - ./app_data:/var/lib/mysql 
+
+#   app:
+#     build: .
+#     volumes:
+#       - .:/app
+#     working_dir: /app
+#     networks:
+#       - app
+#     depends_on:
+#       - db
+#     env_file:
+#       - .env
+#     environment:
+#       FLASK_APP: news_letter.py
+#     ports:
+#       - "5000:5000"
+
+# volumes:
+#   app_data:
+
+
 networks:
   app:
     driver: bridge
@@ -32,54 +72,11 @@ services:
     env_file:
       - .env
     environment:
-      FLASK_APP: news_letter.py
+      FLASK_APP: wsgi.py        # Use wsgi.py as the app entry point
+      FLASK_ENV: production      # Set the environment to production
     ports:
       - "5000:5000"
+    command: gunicorn --bind 0.0.0.0:5000 wsgi:app   # Use gunicorn to serve the app in production
 
 volumes:
   app_data:
-
-
-# version: '3'
-
-# networks:
-#   app:
-#     driver: bridge
-
-# services:
-#   db:
-#     image: mysql:8.0
-#     container_name: db
-#     environment:
-#       MYSQL_ROOT_PASSWORD: this
-#       MYSQL_DATABASE: news
-#       MYSQL_USER: user
-#       MYSQL_PASSWORD: password
-#     ports:
-#       - "3306:3306"
-#     networks:
-#       - app
-#     volumes:
-#       - ./app_data:/var/lib/mysql
-
-#   app:
-#     build: .
-#     volumes:
-#       - .:/app
-#     working_dir: /app
-#     networks:
-#       - app
-#     depends_on:
-#       - db
-#     env_file:
-#       - .env
-#     environment:
-#       FLASK_APP: news_letter.py
-#       FLASK_ENV: production  # Set to production
-#       FLASK_DEBUG: 0         # Disable debug mode
-#     ports:
-#       - "5000:5000"
-#     command: gunicorn -w 4 -b 0.0.0.0:5000 news_letter:app  # Run with Gunicorn
-
-# volumes:
-#   app_data:
