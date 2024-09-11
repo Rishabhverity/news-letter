@@ -208,9 +208,13 @@ def update_subscription(id):
     data = request.get_json()
     new_name = data.get('name')
     new_email = data.get('email')
-    action = data.get('action')  
+    action = data.get('action')
 
-   
+    # Basic email validation using regex
+    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if new_email and not re.match(email_pattern, new_email):
+        return jsonify({'error': 'Invalid email format! Email must contain @ and a valid domain like .com'}), 400
+
     if not new_name and not new_email and not action:
         return jsonify({'error': 'At least one of name, email, or action must be provided!'}), 400
 
@@ -228,11 +232,11 @@ def update_subscription(id):
                 current_email = result[2]
                 unsubscribe_date = result[3]  # Current value of unsubscribe field
 
-                # Determine action based updates
+                # Determine action-based updates
                 if action == 'unsubscribe':
                     unsubscribe_date = datetime.now()
                 elif action == 'subscribe':
-                    unsubscribe_date = None  # Reset unsubscribe if re-subscribing
+                    unsubscribe_date = None  # Reset unsubscribe if resubscribing
 
                 # Update subscription details
                 update_subscription_query = text("""
@@ -269,6 +273,7 @@ def update_subscription(id):
     except Exception as e:
         print(f"Error occurred: {e}")
         return jsonify({'error': 'An error occurred while updating the subscription. Please try again later.'}), 500
+
 
 
 
