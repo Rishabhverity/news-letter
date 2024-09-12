@@ -5,7 +5,7 @@ python-dotenv
 cryptography
 
 pytest
-mysqlclient
+# mysqlclient
 gunicorn
 
 
