@@ -13,14 +13,29 @@ from flask_migrate import Migrate
 import re 
 load_dotenv()
 
+# app = Flask(__name__)
+
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# db = SQLAlchemy(app)
+
+# engine = create_engine(os.getenv('DATABASE_URI'))
+# migrate = Migrate(app, db)
+
+# metadata = MetaData()
+
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+# Directly specify the DATABASE_URI here
+DATABASE_URI = 'mysql+pymysql://user:password@db/news'
+
+# Set the database URI in the app configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
-engine = create_engine(os.getenv('DATABASE_URI'))
+engine = create_engine(DATABASE_URI)
 migrate = Migrate(app, db)
 
 metadata = MetaData()
