@@ -13,32 +13,29 @@ from flask_migrate import Migrate
 import re 
 load_dotenv()
 
-# app = Flask(__name__)
+MYSQL_USER = os.getenv('MYSQL_USER')
+MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
+MYSQL_DB = os.getenv('MYSQL_DB')
+MYSQL_HOST = os.getenv('MYSQL_HOST')
+MYSQL_PORT = os.getenv('MYSQL_PORT')
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Construct the database URI
+DATABASE_URI = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
+# Create the engine
+engine = create_engine(DATABASE_URI, echo=True)
 
-# db = SQLAlchemy(app)
-
-# engine = create_engine(os.getenv('DATABASE_URI'))
-# migrate = Migrate(app, db)
-
-# metadata = MetaData()
-
+# Initialize Flask app and set SQLAlchemy configurations
 app = Flask(__name__)
-
-# Directly specify the DATABASE_URI here
-DATABASE_URI = 'mysql+pymysql://user:password@db/news'
-
-# Set the database URI in the app configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-engine = create_engine(DATABASE_URI)
+
+# Initialize the migration engine
 migrate = Migrate(app, db)
 
 metadata = MetaData()
+
 
 # Models
 class Subscription(db.Model):
