@@ -249,6 +249,9 @@ def update_subscription(id):
                     unsubscribe_date = datetime.now()
                 elif action == 'subscribe':
                     unsubscribe_date = None  # Reset unsubscribe if resubscribing
+                else:
+                    # If the action is neither 'subscribe' nor 'unsubscribe', return an error
+                    return jsonify({'error': 'Invalid action! Action must be either "subscribe" or "unsubscribe".'}), 400
 
                 # Update subscription details
                 update_subscription_query = text("""
